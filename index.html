@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f8a57">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>CanalSweep – boat dashboard (demo)</title>
+<style>
+:root{--bg:#eef4f0;--card:#fff;--fg:#12241b;--mut:#587064;--line:#d3e0d8;--acc:#1f8a57;--blue:#2f6fd0;--warn:#d98a12;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1813;--card:#152720;--fg:#e3efe8;--mut:#93aa9e;--line:#2a4237;--acc:#4cc885;--blue:#6aa0ff;--warn:#f0a93a}}
+:root[data-theme="dark"]{--bg:#0d1813;--card:#152720;--fg:#e3efe8;--mut:#93aa9e;--line:#2a4237;--acc:#4cc885;--blue:#6aa0ff;--warn:#f0a93a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 "Avenir Next","Segoe UI",Roboto,system-ui,sans-serif}
+main{max-width:460px;margin:0 auto;padding:14px 14px 28px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+h1{margin:0;font-size:1.35rem;letter-spacing:-.01em}
+.chip{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--mut)}
+.chip.on{color:var(--acc);border-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid .card{margin:0}.grid{margin-bottom:10px}
+.k{color:var(--mut);font-size:.78rem}
+.v{font-size:1.8rem;font-weight:700;line-height:1.1}.v small{font-size:.85rem;font-weight:500;color:var(--mut)}
+.bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:5px}.bar i{display:block;height:100%;width:0;transition:width .4s}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.bin{margin-top:10px}.bin:first-of-type{margin-top:6px}
+button{font:inherit;font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.6rem 1rem;cursor:pointer}
+button.go{background:var(--acc);border-color:var(--acc);color:#fff}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.btns{display:flex;gap:8px;margin-bottom:10px}.btns button{flex:1}
+svg{width:100%;height:auto;display:block}
+.cap{color:var(--mut);font-size:.75rem}
+details summary{cursor:pointer;font-weight:600}
+label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;font-size:.85rem}
+input{width:84px;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.3rem .5rem}
+pre{margin:8px 0;white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.tags span{font-size:.75rem;border:1px solid var(--line);border-radius:99px;padding:1px 8px;color:var(--mut)}
+#toasts{position:fixed;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 0;pointer-events:none;z-index:9;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{pointer-events:auto;max-width:440px;width:100%;box-sizing:border-box;display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--warn);border-left-width:6px;border-radius:12px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.25);animation:tin .25s}
+.toast.danger{border-color:#d64545}.toast b{display:block}.toast button{margin-left:auto;padding:.2rem .6rem}
+@keyframes tin{from{transform:translateY(-14px);opacity:0}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.toast{animation:none}}
+.li{display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding:6px 0;font-size:.82rem}
+#bell{padding:.25rem .6rem;font-size:.85rem}
+.phbar{position:relative;height:14px;border-radius:7px;margin-top:10px}
+.phpt{position:absolute;top:-4px;width:4px;height:22px;background:var(--fg);border-radius:2px;transform:translateX(-50%);transition:left .4s;border:1px solid var(--card)}
+</style></head><body><div id="toasts" aria-live="assertive"></div><main>
+<header><h1>CanalSweep</h1><span style="display:flex;gap:6px;align-items:center"><button id="bell" aria-label="Alerts">🔔 <span id="bn">0</span></button><span class="chip" id="st">Idle</span></span></header>
+<div class="btns"><button class="go" id="go">Start cleanup</button><button id="rs">Reset</button></div>
+<div class="grid">
+ <div class="card"><div class="k">Water hyacinth</div><div class="v"><span id="wh">0.0</span> <small>kg</small></div><div class="k">weighed by load cell</div></div>
+ <div class="card"><div class="k">Plastic bottles</div><div class="v" id="nb">0</div><div class="k" id="wb">≈ 0.00 kg</div></div>
+</div>
+<div class="card"><div class="k">Other trash</div><div class="row"><span class="v" id="no">0</span><span class="k" id="wo">≈ 0.00 kg</span></div>
+ <div class="tags"><span id="tg">bags 0</span><span id="tc">cans 0</span><span id="tu">cups 0</span></div></div>
+<div class="card"><div class="row"><span class="k">Total collected</span><span class="v" id="tw">0.0 <small>kg</small></span></div>
+ <div class="row k"><span>Distance covered</span><span id="di">0 m</span></div></div>
+<div class="card"><b>Bins</b> <span class="cap">(after shredding)</span><div id="bins"></div><div class="cap" id="al" style="margin-top:8px"></div></div>
+<div class="card" id="phc"><div class="row"><b>Water pH</b><span class="chip" id="phs">-</span></div>
+ <div class="v" id="phv">7.0</div>
+ <div class="phbar" id="phb"><i class="phpt" id="php"></i></div>
+ <div class="row cap" style="margin-top:4px"><span>0 acidic</span><span>7 neutral</span><span>14 alkaline</span></div>
+ <div id="pha" style="margin-top:8px;font-size:.88rem"></div>
+ <svg viewBox="0 0 300 70" id="phg" role="img" aria-label="Recent pH readings" style="margin-top:6px"></svg>
+ <label>Demo: set pH<input id="phd" type="range" min="0" max="14" step="0.1" value="7.2" style="width:150px"></label>
+ <div class="cap" style="margin-top:6px">WHO sets no health-based value for pH. 6.5 to 8.5 is the range usually used as optimum for drinking water, and very low or very high pH can irritate skin and eyes. These bands are adjustable settings, not legal limits. pH is only one test: canal water is not safe to drink untreated even at a normal pH, because bacteria and chemicals do not show up in pH.</div></div>
+<div class="card" id="mpc"><div class="row"><b>Microplastics in water sample</b><span class="chip" id="mpl">-</span></div>
+ <canvas id="mpcv" width="600" height="360" style="width:100%;height:auto;border-radius:8px;margin-top:8px;border:1px solid var(--line)" role="img" aria-label="Simulated filter view with detected particles"></canvas>
+ <div class="cap" id="mps">Sampling...</div>
+ <div class="grid" style="margin:8px 0 0"><div><div class="k">Last sample</div><div class="v" id="mpL">-</div><div class="k">particles per litre</div></div><div><div class="k">This sample</div><div class="tags" id="mpt"></div></div></div>
+ <svg viewBox="0 0 300 80" id="mph" role="img" aria-label="Particles per litre in recent samples" style="margin-top:6px"></svg>
+ <label>Demo: pollution level<input id="mpd" type="range" min="0" max="100" value="50" style="width:150px"></label>
+ <div class="cap" style="margin-top:6px">Microplastics are plastic particles smaller than 5 mm. The boat filters a water sample and a camera counts the particles it can see, and this is a simulation. Very small particles need a microscope or lab analysis, and a lab must confirm that a particle is plastic. WHO (2019) found insufficient evidence of a health risk at current levels and asked for more research. Its priority is removing pathogens and chemicals. The levels shown only compare your own samples, because there is no official limit and sampling methods differ between studies.</div></div>
+<div class="card" id="alc"><div class="row"><b>Alerts</b><span style="display:flex;gap:6px;align-items:center"><label style="margin:0"><span class="cap">Sound</span><input id="snd" type="checkbox" style="width:auto"></label><button id="tst">Test alert</button><button id="clr">Clear</button></span></div>
+ <div id="alr" class="cap" style="margin-top:6px">No alerts yet.</div></div>
+<div class="card"><b>Solar panel and battery</b> <span class="cap">(demo clock <span id="clk">09:00</span>, 1 s = 1 min)</span>
+ <div class="grid" style="margin:8px 0 0"><div><div class="k">Panel output</div><div class="v" id="pv">0<small> W</small></div><div class="bar"><i id="pvb" style="background:var(--warn)"></i></div><div class="k" id="sl"></div></div>
+ <div><div class="k">Battery</div><div class="v" id="bt">80<small>%</small></div><div class="bar"><i id="btb" style="background:var(--acc)"></i></div><div class="k" id="bs"></div></div></div>
+ <div class="row k" style="margin-top:8px"><span>Load now</span><span id="ld"></span></div>
+ <div class="row k"><span>Harvested / used (demo)</span><span id="en">0 / 0 Wh</span></div>
+ <div class="row k"><span>Battery, at this rate</span><span id="es"></span></div>
+ <svg viewBox="0 0 300 80" id="sc" role="img" aria-label="Solar output and load over time" style="margin-top:6px"></svg>
+ <div class="cap">Yellow: solar output · Blue: load</div></div>
+<div class="card"><div class="k">Session time</div><div class="v" id="tm">00:00</div><div class="k">GPS: demo route</div></div>
+<div class="card"><b>Route (GPS)</b>
+ <svg viewBox="0 0 300 130" role="img" aria-label="Boat route on a canal"><rect width="300" height="130" rx="8" fill="var(--bg)"/>
+ <path id="canal" d="M10 95 C60 30 110 120 160 65 S250 20 290 40" fill="none" stroke="var(--blue)" stroke-opacity=".25" stroke-width="22" stroke-linecap="round"/>
+ <path id="trail" d="" fill="none" stroke="var(--acc)" stroke-width="3" stroke-linecap="round"/><circle id="dot" r="6" fill="var(--acc)" cx="10" cy="95"/></svg></div>
+<div class="card"><b>Last 7 days</b> <span class="cap">(sample data, kg)</span><svg viewBox="0 0 300 110" id="hist" role="img" aria-label="Daily collected weight"></svg></div>
+<div class="card"><b>Session report</b><pre id="rp"></pre><button id="cp">Copy report</button> <span class="cap" id="cpm"></span></div>
+<div class="card"><details><summary>Calculation settings</summary>
+ <div class="cap" style="margin-top:6px">Placeholders. Replace them with values you measure: weigh 20 items of each kind and average them, and compare bin volume before and after shredding.</div>
+ <div id="set"></div></details></div>
+<p class="cap">All numbers are simulated for this demo, including the sun and the demo clock. A real boat would send counts and weights to a database such as Firebase.</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const defs=[['sb','Bottle mass (g)',20],['sg','Plastic bag mass (g)',5],['sc','Metal can mass (g)',15],['su','Foam cup mass (g)',4],
+ ['cb','Plastic bin capacity (bottles)',60],['co','Other bin capacity (items)',80],['ch','Weed bin capacity (kg)',30],
+ ['fw','Hyacinth volume after chopping (%)',40],['fp','Bottle volume after shredding (%)',30],['fo','Other trash volume after shredding (%)',50],['pw','Solar panel rated power (W)',50],['bc','Battery capacity (Wh)',84],['lr','Load while working (W)',45],['li','Load while idle (W)',3],['pgl','pH good from',6.5],['pgh','pH good to',8.5],['pcl','pH poor below',6],['pch','pH poor above',9],['pdl','pH dangerous below',4],['pdh','pH dangerous above',11],['mv','Microplastic sample volume (L)',1],['mm','Microplastic moderate from (per L)',10],['mh','Microplastic high from (per L)',30]];
+let saved={};try{saved=JSON.parse(localStorage.getItem('cs2')||'{}')||{}}catch(e){}
+$('set').innerHTML=defs.map(d=>`<label>${d[1]}<input id="${d[0]}" type="number" step="any" min="0" value="${saved[d[0]]||d[2]}"></label>`).join('');
+const cfg=()=>Object.fromEntries(defs.map(d=>[d[0],+$(d[0]).value||d[2]]));
+defs.forEach(d=>$(d[0]).addEventListener('input',()=>{try{localStorage.setItem('cs2',JSON.stringify(cfg()))}catch(e){}draw()}));
+const bins=[['w','Weed bin','var(--acc)'],['p','Plastic bin','var(--blue)'],['o','Other trash bin','var(--warn)']];
+$('bins').innerHTML=bins.map(b=>`<div class="bin"><div class="row"><b>${b[1]}</b><span id="${b[0]}t"></span></div><div class="bar"><i id="${b[0]}b" style="background:${b[2]}"></i></div><div class="cap" id="${b[0]}n"></div></div>`).join('');
+let phBase=7.2,phNow=7.2,phS='good';const phh=[];
+let run=false,n={b:0,g:0,c:0,u:0},wh=0,dist=0,sec=0,pos=0,E=null,hv=0,us=0,tmin=540,pvw=0,ldw=0;const hs=[];
+const sample=[14,22,9,31,18,26,0];
+function calc(){const c=cfg(),oth=n.g+n.c+n.u,mb=n.b*c.sb/1000,mo=(n.g*c.sg+n.c*c.sc+n.u*c.su)/1000;
+ const raw={w:wh/c.ch*100,p:n.b/c.cb*100,o:oth/c.co*100},fa={w:c.fw/100,p:c.fp/100,o:c.fo/100};
+ return{c,oth,mb,mo,tot:mb+mo+wh,raw,fill:{w:raw.w*fa.w,p:raw.p*fa.p,o:raw.o*fa.o}}}
+function draw(){const r=calc(),f=x=>Math.min(100,x);
+ $('wh').textContent=wh.toFixed(1);$('nb').textContent=n.b;$('wb').textContent='≈ '+r.mb.toFixed(2)+' kg';
+ $('no').textContent=r.oth;$('wo').textContent='≈ '+r.mo.toFixed(2)+' kg';$('tg').textContent='bags '+n.g;$('tc').textContent='cans '+n.c;$('tu').textContent='cups '+n.u;
+ $('tw').innerHTML=r.tot.toFixed(1)+' <small>kg</small>';$('di').textContent=Math.round(dist)+' m';
+ let full=false;bins.forEach(b=>{const k=b[0],v=f(r.fill[k]);$(k+'t').textContent=Math.round(v)+'%';$(k+'b').style.width=v+'%';
+  $(k+'n').textContent='Without shredding it would be '+Math.round(f(r.raw[k]))+'% full';if(v>=90)full=true});
+ $('al').textContent=full?'A bin is almost full. Empty it soon.':'';
+ solar(r.c);phDraw(r.c);watch(r);$('tm').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
+ const st=$('st');st.textContent=run?'Autopilot on':'Idle';st.className='chip'+(run?' on':'');$('go').textContent=run?'Stop cleanup':'Start cleanup';
+ hist(r.tot);$('rp').textContent=report(r)}
+function report(r){const p=x=>Math.round(Math.min(100,x))+'%';
+ return ['CanalSweep session report (demo data)','Time '+$('tm').textContent+' · distance '+Math.round(dist)+' m','Water hyacinth: '+wh.toFixed(1)+' kg',
+ 'Plastic bottles: '+n.b+' (≈ '+r.mb.toFixed(2)+' kg)','Other trash: '+r.oth+' (bags '+n.g+', cans '+n.c+', cups '+n.u+') (≈ '+r.mo.toFixed(2)+' kg)','Total: '+r.tot.toFixed(1)+' kg','Water pH: '+phNow.toFixed(1)+' ('+phInfo(phNow,r.c).t+')','Microplastics (last sample): '+(mp.last?mp.last.pl.toFixed(1)+' particles/L ('+mp.last.lv+', your own scale)':'no sample yet'),'Solar: panel '+Math.round(pvw)+' W, battery '+Math.round(E/r.c.bc*100)+'%, harvested '+hv.toFixed(1)+' Wh, used '+us.toFixed(1)+' Wh (demo clock)',
+ 'Bin fill with shredding: weed '+p(r.fill.w)+', plastic '+p(r.fill.p)+', other '+p(r.fill.o),'Bin fill without shredding: weed '+p(r.raw.w)+', plastic '+p(r.raw.p)+', other '+p(r.raw.o),
+ 'Note: counts are simulated and masses use placeholder settings.'].join('\n')}
+function hist(tod){const d=sample.slice(0,6).concat([+tod.toFixed(1)]),m=Math.max(10,...d),dn=['Mon','Tue','Wed','Thu','Fri','Sat','Today'];
+ $('hist').innerHTML=d.map((v,i)=>{const h=v/m*70,x=14+i*41;return `<rect x="${x}" y="${85-h}" width="26" height="${h}" rx="4" fill="${i===6?'var(--acc)':'var(--blue)'}" opacity="${i===6?1:.6}"/><text x="${x+13}" y="100" text-anchor="middle" font-size="9" fill="var(--mut)">${dn[i]}</text><text x="${x+13}" y="${80-h}" text-anchor="middle" font-size="9" fill="var(--fg)">${v}</text>`}).join('')}
+function solar(c){if(E===null)E=.8*c.bc;E=Math.min(E,c.bc);const pct=E/c.bc*100,net=pvw-ldw;
+ $('clk').textContent=String(Math.floor(tmin/60)).padStart(2,'0')+':'+String(tmin%60).padStart(2,'0');
+ $('pv').innerHTML=Math.round(pvw)+'<small> W</small>';$('pvb').style.width=Math.min(100,pvw/c.pw*100)+'%';
+ $('sl').textContent=pvw>.5?'Sunlight '+Math.round(pvw/c.pw*100)+'% of rated':'No sun (night)';
+ $('bt').innerHTML=Math.round(pct)+'<small>%</small>';$('btb').style.width=pct+'%';
+ $('bs').textContent=net>.5?'Charging +'+net.toFixed(0)+' W':net<-.5?'Discharging '+net.toFixed(0)+' W':'Steady';
+ $('ld').textContent=Math.round(ldw)+' W ('+(run?'working':'idle')+')';$('en').textContent=hv.toFixed(1)+' / '+us.toFixed(1)+' Wh';
+ const f=h=>Math.floor(h)+' h '+Math.round((h%1)*60)+' min';
+ $('es').textContent=net>.5?'full in '+f((c.bc-E)/net):net<-.5?'empty in '+f(E/-net):'steady';
+ if(pct<20)$('al').textContent=($('al').textContent?$('al').textContent+' ':'')+'Battery low. Bring the boat in to charge.';
+ const W=300,H=80,mx=Math.max(c.pw,c.lr)*1.1,pt=i=>hs.map((q,j)=>(j/89*W).toFixed(1)+','+(H-4-q[i]/mx*(H-8)).toFixed(1)).join(' ');
+ $('sc').innerHTML=hs.length>1?`<polyline points="${pt(0)}" fill="none" stroke="var(--warn)" stroke-width="2"/><polyline points="${pt(1)}" fill="none" stroke="var(--blue)" stroke-width="2"/>`:''}
+const act={},log=[],tests=[['danger','Weed bin is 92% full. Empty it soon.'],['warn','Battery low (18%). Bring the boat in to charge.'],['danger','Bottle shredder may be jammed. Check the blades.'],['warn','Camera lens may be dirty. Clean it.']];let tn=0;
+function beep(){if($('snd').checked){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=.08;o.start();o.stop(a.currentTime+.18)}catch(e){}}
+ try{navigator.vibrate&&navigator.vibrate([120,60,120])}catch(e){}}
+function fire(lvl,msg,test){const it={lvl,msg,test,t:$('clk').textContent};log.unshift(it);if(log.length>20)log.pop();toast(it);beep();renderLog()}
+function toast(it){const d=document.createElement('div');d.className='toast'+(it.lvl==='danger'?' danger':'');d.setAttribute('role','alert');
+ d.innerHTML=`<span aria-hidden="true">${it.lvl==='danger'?'🚨':'⚠️'}</span><div><b>${it.lvl==='danger'?'Urgent':'Warning'}${it.test?' (test)':''}</b>${it.msg}</div><button>Dismiss</button>`;
+ const rm=()=>d.remove();d.querySelector('button').onclick=rm;$('toasts').appendChild(d);if(it.lvl!=='danger')setTimeout(rm,7000)}
+function renderLog(){$('alr').innerHTML=log.length?log.map(i=>`<div class="li"><span>${i.lvl==='danger'?'🚨':'⚠️'} ${i.msg}${i.test?' (test)':''}</span><span class="cap">${i.t}</span></div>`).join(''):'No alerts yet.';$('bn').textContent=log.length}
+function watch(r){const pct=E/r.c.bc*100;
+ [['w','Weed bin',r.fill.w],['p','Plastic bin',r.fill.p],['o','Other trash bin',r.fill.o]].forEach(q=>{const v=q[2];
+  if(v>=90&&!act[q[0]]){act[q[0]]=1;fire('danger',q[1]+' is '+Math.round(Math.min(100,v))+'% full. Empty it soon.')}else if(v<70)act[q[0]]=0});
+ if(pct<20&&!act.bl){act.bl=1;fire('warn','Battery low ('+Math.round(pct)+'%). Bring the boat in to charge.')}else if(pct>30)act.bl=0;
+ {const k=phS;if((k==='poor'||k==='danger')&&act.ph!==k){act.ph=k;fire(k==='danger'?'danger':'warn','Water pH '+phNow.toFixed(1)+' is '+(k==='danger'?'dangerous':'out of range')+'. Avoid skin contact with the water.')}else if(k==='good'||k==='caution')act.ph=0}
+ if(pct<8&&!act.bc){act.bc=1;fire('danger','Battery critical ('+Math.round(pct)+'%). The boat may stop soon.')}else if(pct>15)act.bc=0}
+$('tst').onclick=()=>{const t=tests[tn++%tests.length];fire(t[0],t[1],true)};
+$('clr').onclick=()=>{log.length=0;renderLog()};
+$('bell').onclick=()=>$('alc').scrollIntoView({behavior:'smooth'});
+function phInfo(v,c){const side=v<7?'acidic':'alkaline';
+ if(v<c.pdl||v>c.pdh)return{k:'danger',t:'Dangerous (very '+side+')',col:'#d64545',a:'Do not touch or use this water. Very '+side+' water can irritate skin and eyes. Keep people away.'};
+ if(v<c.pcl||v>c.pch)return{k:'poor',t:'Out of range',col:'#e8892b',a:'Avoid skin and eye contact. Do not drink it or use it for washing.'};
+ if(v<c.pgl||v>c.pgh)return{k:'caution',t:'Slightly out of range',col:'#b8960a',a:'Avoid long skin contact. Do not drink it.'};
+ return{k:'good',t:'Normal range',col:'#2a9d57',a:'The pH is in the usual range for water. This does not mean the water is safe to drink.'}}
+function phDraw(c){const v=phNow,i=phInfo(v,c),p=x=>(x/14*100).toFixed(1);phS=i.k;
+ $('phv').innerHTML=v.toFixed(1)+' <small>'+(v<6.95?'acidic':v>7.05?'alkaline':'neutral')+'</small>';
+ $('php').style.left=p(v)+'%';
+ $('phb').style.background=`linear-gradient(90deg,#d64545 0 ${p(c.pdl)}%,#e8892b ${p(c.pdl)}% ${p(c.pcl)}%,#e8c82b ${p(c.pcl)}% ${p(c.pgl)}%,#3dbb6a ${p(c.pgl)}% ${p(c.pgh)}%,#e8c82b ${p(c.pgh)}% ${p(c.pch)}%,#e8892b ${p(c.pch)}% ${p(c.pdh)}%,#d64545 ${p(c.pdh)}% 100%)`;
+ const s=$('phs');s.textContent=i.t;s.style.color=i.col;s.style.borderColor=i.col;
+ $('pha').innerHTML='<b>'+i.t+'.</b> '+i.a;
+ const H=70,y=x=>H-4-x/14*(H-8),pts=phh.map((q,j)=>(j/59*300).toFixed(1)+','+y(q).toFixed(1)).join(' ');
+ $('phg').innerHTML=`<rect x="0" y="${y(c.pgh)}" width="300" height="${y(c.pgl)-y(c.pgh)}" fill="#3dbb6a" opacity=".18"/>`+(phh.length>1?`<polyline points="${pts}" fill="none" stroke="var(--fg)" stroke-width="2"/>`:'')}
+$('phd').oninput=()=>{phBase=+$('phd').value;phNow=phBase;phh.push(phNow);if(phh.length>60)phh.shift();draw()};
+const TY=['fibre','fragment','film','bead'],MC={fibre:'#e8c82b',fragment:'#e86a6a',film:'#6aa0ff',bead:'#b07be0'};
+const mp={ps:[],scan:0,pause:0,cnt:{},hist:[],last:null,lvl:50,bg:'#fff',fg:'#000',fr:0,rec:[]};
+function mpNew(){const n=Math.round(3+mp.lvl/100*37*(.7+Math.random()*.6));mp.ps=[];mp.rec=[];
+ for(let i=0;i<n;i++){const r=Math.sqrt(Math.random())*75,t=Math.random()*6.28;mp.ps.push({x:150+r*Math.cos(t),y:90+r*Math.sin(t),ty:TY[Math.random()*4|0],big:Math.random()<.35,a:Math.random()*3,seen:0})}
+ mp.scan=0;mp.cnt={fibre:0,fragment:0,film:0,bead:0,big:0,small:0};mpTags()}
+function mpTags(){$('mpt').innerHTML=TY.map(t=>`<span style="border-color:${MC[t]}">${t} ${mp.cnt[t]}</span>`).join('')+`<span>1-5 mm ${mp.cnt.big}</span><span>under 1 mm ${mp.cnt.small}</span>`}
+function mpLevel(pl,c){return pl>=c.mh?{k:'High',col:'#e8892b'}:pl>=c.mm?{k:'Moderate',col:'#b8960a'}:{k:'Low',col:'#2a9d57'}}
+function mpFinish(){const c=cfg(),tot=TY.reduce((a,t)=>a+mp.cnt[t],0),pl=tot/c.mv,lv=mpLevel(pl,c);
+ mp.last={pl,lv:lv.k,n:tot};mp.hist.push(pl);if(mp.hist.length>12)mp.hist.shift();
+ $('mpL').textContent=pl.toFixed(1);const ch=$('mpl');ch.textContent=lv.k+' (your scale)';ch.style.color=lv.col;ch.style.borderColor=lv.col;
+ const H=80,m=Math.max(10,...mp.hist);$('mph').innerHTML=mp.hist.map((v,i)=>{const h=v/m*52,x=8+i*24;return `<rect x="${x}" y="${66-h}" width="16" height="${h}" rx="3" fill="${v>=c.mh?'#e8892b':v>=c.mm?'#e8c82b':'#3dbb6a'}"/><text x="${x+8}" y="76" text-anchor="middle" font-size="8" fill="var(--mut)">${v.toFixed(0)}</text>`}).join('');
+ if(lv.k==='High')fire('warn','High microplastic count in the last sample ('+pl.toFixed(1)+' per litre, on your own scale). Mark this location.');
+ mp.pause=1.5;$('mps').textContent='Sample finished. Next sample starting...'}
+$('mpd').oninput=()=>{mp.lvl=+$('mpd').value};
+const cv2=$('mpcv'),cx=cv2.getContext('2d');let mpT=performance.now();
+function mpFrame(now){requestAnimationFrame(mpFrame);const dt=Math.min(.05,(now-mpT)/1000);mpT=now;
+ if(mp.fr++%60===0){const cs=getComputedStyle(document.body);mp.bg=cs.backgroundColor;mp.fg=cs.color}
+ if(mp.pause>0){mp.pause-=dt;if(mp.pause<=0){mpNew();$('mps').textContent='Scanning the filter...'}}
+ else{mp.scan+=dt*14;const sx=65+mp.scan;let ch=0;
+  mp.ps.forEach(p=>{if(!p.seen&&p.x<=sx){p.seen=1;mp.cnt[p.ty]++;mp.cnt[p.big?'big':'small']++;mp.rec.push(p);if(mp.rec.length>3)mp.rec.shift();ch=1}});
+  if(ch)mpTags();if(mp.scan>=170)mpFinish()}
+ cx.setTransform(2,0,0,2,0,0);cx.globalAlpha=1;cx.fillStyle=mp.bg;cx.fillRect(0,0,300,180);
+ cx.globalAlpha=.07;cx.fillStyle=mp.fg;cx.beginPath();cx.arc(150,90,85,0,6.28);cx.fill();cx.globalAlpha=.4;cx.strokeStyle=mp.fg;cx.lineWidth=1;cx.stroke();cx.globalAlpha=1;
+ mp.ps.forEach(p=>{cx.save();cx.translate(p.x,p.y);cx.rotate(p.a);cx.fillStyle=cx.strokeStyle=MC[p.ty];const s=p.big?1:.5;
+  if(p.ty==='fibre'){cx.lineWidth=1.5;cx.beginPath();cx.moveTo(-8*s,0);cx.quadraticCurveTo(0,4*s,8*s,0);cx.stroke()}
+  else if(p.ty==='fragment'){cx.beginPath();cx.moveTo(-5*s,3*s);cx.lineTo(0,-5*s);cx.lineTo(5*s,2*s);cx.closePath();cx.fill()}
+  else if(p.ty==='film'){cx.globalAlpha=.6;cx.fillRect(-6*s,-3*s,12*s,6*s);cx.globalAlpha=1}
+  else{cx.beginPath();cx.arc(0,0,4*s,0,6.28);cx.fill()}
+  cx.restore();
+  if(p.seen){cx.strokeStyle=MC[p.ty];cx.lineWidth=1;cx.strokeRect(p.x-10,p.y-10,20,20)}});
+ cx.font='600 8px system-ui';mp.rec.forEach(p=>{cx.fillStyle=MC[p.ty];cx.fillText(p.ty+(p.big?' 1-5mm':' <1mm'),p.x-10,p.y-13)});
+ if(mp.pause<=0){const sx=65+mp.scan;cx.fillStyle='#2a9d57';cx.globalAlpha=.8;cx.fillRect(sx-1,5,2,170);cx.globalAlpha=1}}
+mpNew();requestAnimationFrame(mpFrame);
+function route(){const p=$('canal'),L=p.getTotalLength(),pt=p.getPointAtLength(Math.min(L,pos/100*L));$('dot').setAttribute('cx',pt.x);$('dot').setAttribute('cy',pt.y);
+ const tr=$('trail');tr._d=(tr._d||'')+(tr._d?' L':'M')+pt.x.toFixed(1)+' '+pt.y.toFixed(1);tr.setAttribute('d',tr._d)}
+$('go').onclick=()=>{run=!run;draw()};
+$('rs').onclick=()=>{Object.keys(act).forEach(k=>act[k]=0);run=false;n={b:0,g:0,c:0,u:0};wh=0;dist=0;sec=0;pos=0;E=null;hv=0;us=0;tmin=540;hs.length=0;const t=$('trail');t._d='';t.setAttribute('d','');$('dot').setAttribute('cx',10);$('dot').setAttribute('cy',95);draw()};
+$('cp').onclick=async()=>{try{await navigator.clipboard.writeText($('rp').textContent);$('cpm').textContent='Copied'}catch(e){const s=getSelection(),r=document.createRange();r.selectNodeContents($('rp'));s.removeAllRanges();s.addRange(r);$('cpm').textContent='Selected, press copy'}};
+setInterval(()=>{const c=cfg();if(E===null)E=.8*c.bc;
+ phNow=Math.max(0,Math.min(14,phBase+.08*Math.sin(Date.now()/3000)+(Math.random()-.5)*.04));phh.push(phNow);if(phh.length>60)phh.shift();
+ tmin=(tmin+1)%1440;const h=tmin/60,irr=h>=6&&h<=18?Math.sin(Math.PI*(h-6)/12):0,cloud=.85+.15*Math.sin(Date.now()/7000);
+ pvw=c.pw*irr*cloud;ldw=run?c.lr:c.li;E=Math.max(0,Math.min(c.bc,E+(pvw-ldw)/60));hv+=pvw/60;us+=ldw/60;
+ hs.push([pvw,ldw]);if(hs.length>90)hs.shift();
+ if(run){sec++;dist+=.6;pos=Math.min(100,pos+.4);wh+=Math.random()*.12;
+  if(Math.random()<.35){const q=Math.random();if(q<.45)n.b++;else if(q<.65)n.g++;else if(q<.85)n.c++;else n.u++}
+  if(sec%2===0)route()}
+ draw()},1000);
+draw();
+</script><script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}))</script>
+</body></html>
